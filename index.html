@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>QRまとめ生成ツール</title>
+<script src="https://unpkg.com/html5-qrcode"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
+<style>
+  #qr-canvases img { width: 150px; height: 150px; margin: 5px; }
+</style>
+</head>
+<body>
+
+<h2>QRまとめ生成ツール</h2>
+
+<!-- QR読み取り用 -->
+<div id="reader" style="width:300px"></div>
+<button id="start-scan">QR読み取り開始</button>
+
+<!-- 読み取ったQRリスト -->
+<ul id="qr-list"></ul>
+
+<!-- まとめ画像 -->
+<canvas id="output" width="320" height="320" style="border:1px solid #ccc;"></canvas>
+<br>
+<button id="download">まとめ画像をダウンロード</button>
+
+<script>
+const qrData = [];
+const maxQR = 4;
+
+document.getElementById("start-scan").addEventListener("click", () => {
+    const html5QrcodeScanner = new Html5Qrcode("reader");
+    html5QrcodeScanner.start(
+        { facingMode: "environment" },
+        {
+            fps: 10,
+            qrbox: 250
+        },
+        (decodedText) => {
+            if(qrData.length < maxQR && !qrData.includes(decodedText)){
+                qrData.push(decodedText);
+                const li = document.createElement("li");
+                li.textContent = decodedText;
+                document.getElementById("qr-list").appendChild(li);
+                generateQRCanvas(decodedText, qrData.length-1);
+            }
+        },
+        (errorMessage) => { /* 読み取り失敗時は無視 */ }
+    );
+});
+
+const qrCanvases = [];
+function generateQRCanvas(text, index){
+    const canvas = document.createElement("canvas");
+    canvas.width = 150;
+    canvas.height = 150;
+    QRCode.toCanvas(canvas, text, { width:150, margin:0 }, function (error) {
+        if(error) console.error(error);
+        qrCanvases[index] = canvas;
+        updateOutput();
+    });
+}
+
+function updateOutput(){
+    const out = document.getElementById("output");
+    const ctx = out.getContext("2d");
+    ctx.clearRect(0,0,out.width,out.height);
+
+    // 2x2に並べる
+    qrCanvases.forEach((c, i) => {
+        if(!c) return;
+        const x = (i % 2) * 160;
+        const y = Math.floor(i / 2) * 160;
+        ctx.drawImage(c, x, y);
+    });
+}
+
+document.getElementById("download").addEventListener("click", () => {
+    const out = document.getElementById("output");
+    const link = document.createElement("a");
+    link.href = out.toDataURL("image/png");
+    link.download = "qrまとめ.png";
+    link.click();
+});
+</script>
+
+</body>
+</html>
