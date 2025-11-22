@@ -2,41 +2,42 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>QRまとめ生成ツール</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>QRまとめ生成（縦一列）</title>
 <script src="https://unpkg.com/html5-qrcode"></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
 <style>
-  #qr-canvases img { width: 150px; height: 150px; margin: 5px; }
+  body { font-family: sans-serif; margin: 10px; text-align: center; }
+  #reader { width: 100%; max-width: 320px; margin: auto; }
+  #qr-list { list-style: none; padding: 0; margin: 10px 0; }
+  #qr-list li { margin: 5px 0; word-break: break-all; font-size: 14px; }
+  #output { border:1px solid #ccc; width: 90%; max-width: 320px; margin: 10px auto; }
+  button { padding: 10px 20px; margin: 5px; font-size: 16px; }
 </style>
 </head>
 <body>
 
-<h2>QRまとめ生成ツール</h2>
+<h2>QRまとめ生成（縦一列）</h2>
 
-<!-- QR読み取り用 -->
-<div id="reader" style="width:300px"></div>
+<div id="reader"></div>
 <button id="start-scan">QR読み取り開始</button>
 
-<!-- 読み取ったQRリスト -->
 <ul id="qr-list"></ul>
 
-<!-- まとめ画像 -->
-<canvas id="output" width="320" height="320" style="border:1px solid #ccc;"></canvas>
+<canvas id="output" width="320" height="320"></canvas>
 <br>
 <button id="download">まとめ画像をダウンロード</button>
 
 <script>
 const qrData = [];
 const maxQR = 4;
+const qrCanvases = [];
 
 document.getElementById("start-scan").addEventListener("click", () => {
     const html5QrcodeScanner = new Html5Qrcode("reader");
     html5QrcodeScanner.start(
         { facingMode: "environment" },
-        {
-            fps: 10,
-            qrbox: 250
-        },
+        { fps: 10, qrbox: 250 },
         (decodedText) => {
             if(qrData.length < maxQR && !qrData.includes(decodedText)){
                 qrData.push(decodedText);
@@ -46,16 +47,15 @@ document.getElementById("start-scan").addEventListener("click", () => {
                 generateQRCanvas(decodedText, qrData.length-1);
             }
         },
-        (errorMessage) => { /* 読み取り失敗時は無視 */ }
+        (errorMessage) => { /* 読み取り失敗は無視 */ }
     );
 });
 
-const qrCanvases = [];
 function generateQRCanvas(text, index){
     const canvas = document.createElement("canvas");
-    canvas.width = 150;
-    canvas.height = 150;
-    QRCode.toCanvas(canvas, text, { width:150, margin:0 }, function (error) {
+    canvas.width = 300;
+    canvas.height = 300;
+    QRCode.toCanvas(canvas, text, { width:300, margin:0 }, function (error) {
         if(error) console.error(error);
         qrCanvases[index] = canvas;
         updateOutput();
@@ -65,14 +65,17 @@ function generateQRCanvas(text, index){
 function updateOutput(){
     const out = document.getElementById("output");
     const ctx = out.getContext("2d");
+    
+    // 縦一列に高さを自動調整
+    const qrCount = qrCanvases.filter(c=>c).length;
+    out.height = qrCount * 320;
+
     ctx.clearRect(0,0,out.width,out.height);
 
-    // 2x2に並べる
     qrCanvases.forEach((c, i) => {
         if(!c) return;
-        const x = (i % 2) * 160;
-        const y = Math.floor(i / 2) * 160;
-        ctx.drawImage(c, x, y);
+        const y = i * 320;
+        ctx.drawImage(c, 0, y, 320, 320);
     });
 }
 
